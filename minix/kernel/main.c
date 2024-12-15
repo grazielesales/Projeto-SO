@@ -342,7 +342,7 @@ static void announce(void)
 #endif
       "Copyright 2016, Vrije Universiteit, Amsterdam, The Netherlands\n",
       OS_RELEASE);
-  printf(" Minix 3.4.0rc6 - SO - UNIFESP 2s2024 - Projeto 1 - Equipe 3\n");
+    printf("========================================\n| Minix 3.4.0rc6 - SO - UNIFESP 2s2024 |\n |        Projeto 1 - Equipe 3          |\n========================================\n");
 }
 
 /*===========================================================================*
@@ -357,7 +357,7 @@ void prepare_shutdown(const int how)
    * do shutdown work.  Set a watchog timer to call shutdown(). The timer 
    * argument passes the shutdown status. 
    */
-  printf("ATE A PROXIMA - SO - UNIFESP 2s2024 - Projeto 1 - Equipe 3\n");
+    printf("=======================================\n | ATE A PROXIMA - SO - UNIFESP 2s2024 |\n |        Projeto 1 - Equipe 3         |\n =======================================\n");
   set_kernel_timer(&shutdown_timer, get_monotonic() + system_hz,
       minix_shutdown, how);
 }
