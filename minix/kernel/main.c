@@ -343,6 +343,10 @@ static void announce(void)
       "Copyright 2016, Vrije Universiteit, Amsterdam, The Netherlands\n",
       OS_RELEASE);
   printf("MINIX is open source software, see http://www.minix3.org\n");
+  printf("========================================");
+  printf("| Minix 3.4.0rc6 - SO - UNIFESP 1s2025 |");
+  printf("|    Projeto Pratico (N) - Equipe 4    |");
+  printf("========================================");
 }
 
 /*===========================================================================*
