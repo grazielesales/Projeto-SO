@@ -1784,32 +1784,60 @@ void dequeue(struct proc *rp)
  *===========================================================================*/
 static struct proc * pick_proc(void)
 {
-/* Decide who to run now.  A new process is selected and returned.
- * When a billable process is selected, record it in 'bill_ptr', so that the 
- * clock task can tell who to bill for system time.
- *
- * This function always uses the run queues of the local cpu!
+/*
+ * Decide quem vai executar agora. Um novo processo é selecionado e retornado.
+ * Esta versão foi modificada para implementar um escalonador Round-Robin de Fila Única,
+ * ignorando as filas de prioridade.
  */
-  register struct proc *rp;			/* process to run */
-  struct proc **rdy_head;
-  int q;				/* iterate over queues */
 
-  /* Check each of the scheduling queues for ready processes. The number of
-   * queues is defined in proc.h, and priorities are set in the task table.
-   * If there are no processes ready to run, return NULL.
-   */
-  rdy_head = get_cpulocal_var(run_q_head);
-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
-	if(!(rp = rdy_head[q])) {
-		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
-		continue;
-	}
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
-  }
-  return NULL;
+    struct proc *rp;	/* ponteiro para o processo candidato a ser executado */
+
+    /*
+     * Variável estática para lembrar o índice do último processo escolhido.
+     * Ela mantém seu valor entre as chamadas da função. Começa com o IDLE.
+     */
+    static int last_picked_nr = IDLE;
+    int i;
+
+    /*
+     * Este laço implementa a busca circular. Ele começa a procurar a partir
+     * do processo seguinte ao 'last_picked_nr' e dá a volta na tabela de processos
+     * (NR_PROCS vezes) para garantir que todos sejam verificados.
+     */
+    for (i = 1; i <= NR_PROCS; i++) {
+
+        int current_nr = (last_picked_nr + i) % NR_PROCS;
+        rp = proc_addr(current_nr);
+
+        /*
+         * Nós só queremos escalonar processos de usuário. A função
+         * 'isuserp' verifica isso. Além disso, o processo deve estar
+         * apto a executar, o que 'proc_is_runnable' verifica.
+         */
+        if (isuserp(rp) && proc_is_runnable(rp)) {
+            /*
+             * Encontramos nosso próximo processo!
+             * Atualizamos nosso 'ponteiro' para a próxima busca.
+             */
+            last_picked_nr = current_nr;
+
+            /*
+             * A linha abaixo é importante para o sistema de cobrança de tempo de CPU.
+             * Copiada da lógica original.
+             */
+            if (priv(rp)->s_flags & BILLABLE)
+                get_cpulocal_var(bill_ptr) = rp;
+
+            return rp;
+        }
+    }
+
+    /*
+     * Se o laço terminar e não encontrarmos nenhum processo de usuário pronto,
+     * isso significa que o sistema está ocioso. Nesse caso, devemos retornar
+     * o processo IDLE para que a CPU tenha o que fazer.
+     */
+    return proc_addr(IDLE);
 }
 
 /*===========================================================================*
