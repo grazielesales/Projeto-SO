@@ -1786,30 +1786,30 @@ static struct proc * pick_proc(void)
 {
 
 
-    struct proc *rp;    
+    struct proc *rp;    /* ponteiro para o processo candidato a ser executado */
+    
+
     static int last_picked_nr = IDLE;
     int i;
 
-   
     for (i = 1; i <= NR_PROCS; i++) {
 
         int current_nr = (last_picked_nr + i) % NR_PROCS;
         rp = proc_addr(current_nr);
 
-        
         if (rp->p_nr >= 0 && proc_is_runnable(rp)) {
-           
+            
             last_picked_nr = current_nr;
 
-           
             if (priv(rp)->s_flags & BILLABLE)
                 get_cpulocal_var(bill_ptr) = rp;
 
-            return rp;
+            return rp; /* Retorna o processo de usuário encontrado */
         }
     }
 
-    return proc_addr(IDLE);
+
+    return NULL; 
 }
 
 /*===========================================================================*
