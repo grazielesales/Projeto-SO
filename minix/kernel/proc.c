@@ -1604,12 +1604,17 @@ void enqueue(
  * This function can be used x-cpu as it always uses the queues of the cpu the
  * process is assigned to.
  */
-  int q = rp->p_priority;	 		/* scheduling queue to use */
+#if FCFS
+    q = 7;  // Manda TODOS os processos para a fila 7 (USER_Q)
+#else
+    q = rp->priority; 
+#endif
+	
   struct proc **rdy_head, **rdy_tail;
   
   assert(proc_is_runnable(rp));
 
-  assert(q >= 0);
+  assert(q >= 0 && q < NR_SCHED_QUEUES);
 
   rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
   rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
@@ -1782,34 +1787,20 @@ void dequeue(struct proc *rp)
 /*===========================================================================*
  *				pick_proc				     * 
  *===========================================================================*/
-static struct proc * pick_proc(void)
-{
-/* Decide who to run now.  A new process is selected and returned.
- * When a billable process is selected, record it in 'bill_ptr', so that the 
- * clock task can tell who to bill for system time.
- *
- * This function always uses the run queues of the local cpu!
- */
-  register struct proc *rp;			/* process to run */
-  struct proc **rdy_head;
-  int q;				/* iterate over queues */
-
-  /* Check each of the scheduling queues for ready processes. The number of
-   * queues is defined in proc.h, and priorities are set in the task table.
-   * If there are no processes ready to run, return NULL.
-   */
-  rdy_head = get_cpulocal_var(run_q_head);
-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
-	if(!(rp = rdy_head[q])) {
-		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
-		continue;
-	}
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
-  }
-  return NULL;
+static struct proc * pick_proc(void) {
+    #if FCFS_MODE
+        // FCFS: Pega sempre o processo mais antigo da fila USER_Q (prioridade única)
+        return rdy_head[USER_Q];  
+    #else
+        // Código original do Minix (16 filas de prioridade)
+        struct proc *p;
+        int q;
+        for (q = 0; q < NR_SCHED_QUEUES; q++) {
+            if (!(p = rdy_head[q])) continue;
+            return p;
+        }
+        return NULL;
+    #endif
 }
 
 /*===========================================================================*
