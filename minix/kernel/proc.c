@@ -134,6 +134,7 @@ void proc_init(void)
 		rp->p_endpoint = _ENDPOINT(0, rp->p_nr); /* generation no. 0 */
 		rp->p_scheduler = NULL;		/* no user space scheduler */
 		rp->p_priority = 0;		/* no priority */
+		rp->tickets = 100;              /* Lottery: padrão 100 tickets */
 		rp->p_quantum_size_ms = 0;	/* no quantum size */
 
 		/* arch-specific initialization */
