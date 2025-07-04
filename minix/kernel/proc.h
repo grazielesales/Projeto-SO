@@ -1,6 +1,8 @@
 #ifndef PROC_H
 #define PROC_H
 
+#define FCFS 1  // Ativa o FCFS (First-Come, First-Served)
+
 #include <minix/const.h>
 #include <sys/cdefs.h>
 
