@@ -2,6 +2,7 @@
 #define PROC_H
 
 #define FCFS 1  // Ativa o FCFS (First-Come, First-Served)
+#define NR_SCHED_QUEUES 16
 
 #include <minix/const.h>
 #include <sys/cdefs.h>
