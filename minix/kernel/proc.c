@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h> 
 
 #include "vm.h"
 #include "clock.h"
@@ -1784,32 +1785,54 @@ void dequeue(struct proc *rp)
  *===========================================================================*/
 static struct proc * pick_proc(void)
 {
-/* Decide who to run now.  A new process is selected and returned.
- * When a billable process is selected, record it in 'bill_ptr', so that the 
- * clock task can tell who to bill for system time.
- *
- * This function always uses the run queues of the local cpu!
- */
-  register struct proc *rp;			/* process to run */
-  struct proc **rdy_head;
-  int q;				/* iterate over queues */
+    struct proc *rp;
+    struct proc **rdy_head;
+    int q;
 
-  /* Check each of the scheduling queues for ready processes. The number of
-   * queues is defined in proc.h, and priorities are set in the task table.
-   * If there are no processes ready to run, return NULL.
-   */
-  rdy_head = get_cpulocal_var(run_q_head);
-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
-	if(!(rp = rdy_head[q])) {
-		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
-		continue;
-	}
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
-  }
-  return NULL;
+    /* Lottery scheduling: soma os tickets de todos os processos prontos */
+    unsigned total = 0;
+    unsigned winner, acc = 0;
+
+    rdy_head = get_cpulocal_var(run_q_head);
+
+    /* 1) Somar tickets de todos os processos prontos */
+    for (rp = FIRST_PROC_ADDR; rp <= LAST_PROC_ADDR; rp++) {
+        if (proc_is_runnable(rp)) {
+            total += rp->tickets;
+        }
+    }
+
+    if (total > 0) {
+        /* 2) Sorteia um número entre 1 e total */
+        winner = (rand() % total) + 1;
+
+        /* 3) Achar o processo vencedor */
+        for (rp = FIRST_PROC_ADDR; rp <= LAST_PROC_ADDR; rp++) {
+            if (proc_is_runnable(rp)) {
+                acc += rp->tickets;
+                if (acc >= winner) {
+                    /* Registrar cobrança se for billable */
+                    if (priv(rp)->s_flags & BILLABLE) {
+                        get_cpulocal_var(bill_ptr) = rp;
+                    }
+                    return rp;
+                }
+            }
+        }
+    }
+
+    /* Fallback para Round-Robin original se nenhum ticket for atribuído */
+    for (q = 0; q < NR_SCHED_QUEUES; q++) {
+        if ((rp = rdy_head[q]) != NULL) {
+            assert(proc_is_runnable(rp));
+            if (priv(rp)->s_flags & BILLABLE) {
+                get_cpulocal_var(bill_ptr) = rp;
+            }
+            return rp;
+        }
+    }
+
+    return NULL;
 }
 
 /*===========================================================================*
