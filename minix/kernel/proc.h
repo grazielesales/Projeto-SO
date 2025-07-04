@@ -288,6 +288,9 @@ EXTERN struct proc proc[NR_TASKS + NR_PROCS];	/* process table */
 int mini_send(struct proc *caller_ptr, endpoint_t dst_e, message *m_ptr,
 	int flags);
 
+EXTERN struct proc *rdy_head[NR_SCHED_QUEUES];  /* Head das filas de prioridade */
+EXTERN struct proc *rdy_tail[NR_SCHED_QUEUES];  /* Tail das filas */
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* PROC_H */
