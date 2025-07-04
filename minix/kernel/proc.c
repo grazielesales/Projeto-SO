@@ -1604,10 +1604,11 @@ void enqueue(
  * This function can be used x-cpu as it always uses the queues of the cpu the
  * process is assigned to.
  */
-#if FCFS
+	int q;
+#if FCFS_MODE
     q = 7;  // Manda TODOS os processos para a fila 7 (USER_Q)
 #else
-    q = rp->priority; 
+    q = rp->p_priority; 
 #endif
 	
   struct proc **rdy_head, **rdy_tail;
