@@ -1596,24 +1596,20 @@ void enqueue(
   register struct proc *rp	/* this process is now runnable */
 )
 {
-/* Add 'rp' to one of the queues of runnable processes.  This function is 
- * responsible for inserting a process into one of the scheduling queues. 
- * The mechanism is implemented here.   The actual scheduling policy is
- * defined in sched() and pick_proc().
- *
- * This function can be used x-cpu as it always uses the queues of the cpu the
- * process is assigned to.
- */
- 
-	/* MODIFICAÇÃO 1: Declaração da variável 'q' no início */
 	int q;
 
-	/* MODIFICAÇÃO 2: Lógica para definir a fila 'q' baseada no modo FCFS */
+	/* MODIFICAÇÃO FINAL: Aplica FCFS apenas para processos de usuário */
 #ifdef FCFS_MODE
-	/* Para FCFS, todos os processos de usuário vão para a mesma fila. */
-	q = USER_Q;
+	/* Verifica se o processo tem prioridade de usuário */
+	if (rp->p_priority >= USER_Q) {
+		/* Se for um processo de usuário, força para a fila única FCFS */
+		q = USER_Q;
+	} else {
+		/* Se for uma tarefa de SISTEMA ou SERVIDOR, mantém sua prioridade alta */
+		q = rp->p_priority;
+	}
 #else
-	/* Para o modo padrão, a fila é a prioridade do processo. */
+	/* Modo original do Minix */
 	q = rp->p_priority;
 #endif
 
@@ -1625,54 +1621,40 @@ void enqueue(
 	rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
 	rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
 
-	/* Now add the process to the queue. */
-	if (!rdy_head[q]) {		/* add to empty queue */
-		rdy_head[q] = rdy_tail[q] = rp; 		/* create a new queue */
-		rp->p_nextready = NULL;		/* mark new end */
+	if (!rdy_head[q]) {
+		rdy_head[q] = rdy_tail[q] = rp;
+		rp->p_nextready = NULL;
 	} 
-	else {					/* add to tail of queue */
-		rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */	
-		rdy_tail[q] = rp;				/* set new queue tail */
-		rp->p_nextready = NULL;		/* mark new end */
+	else {
+		rdy_tail[q]->p_nextready = rp;
+		rdy_tail[q] = rp;
+		rp->p_nextready = NULL;
 	}
 
-	/* MODIFICAÇÃO 3: Desativa o bloco de preempção se FCFS_MODE estiver ativo */
+	/* A lógica de preempção já está desativada para FCFS_MODE, mantemos assim */
 #ifndef FCFS_MODE
 	if (cpuid == rp->p_cpu) {
-		/*
-		 * enqueueing a process with a higher priority than the current one,
-		 * it gets preempted. The current process must be preemptible. Testing
-		 * the priority also makes sure that a process does not preempt itself
-		 */
 		struct proc * p;
 		p = get_cpulocal_var(proc_ptr);
 		assert(p);
 		if((p->p_priority > rp->p_priority) &&
 			(priv(p)->s_flags & PREEMPTIBLE))
-			RTS_SET(p, RTS_PREEMPTED); /* calls dequeue() */
+			RTS_SET(p, RTS_PREEMPTED);
 	}
 #endif /* FCFS_MODE */
 
 #ifdef CONFIG_SMP
-	/*
-	 * if the process was enqueued on a different cpu and the cpu is idle, i.e.
-	 * the time is off, we need to wake up that cpu and let it schedule this new
-	 * process
-	 */
 	else if (get_cpu_var(rp->p_cpu, cpu_is_idle)) {
 		smp_schedule(rp->p_cpu);
 	}
 #endif
 
-	/* Make note of when this process was added to queue */
 	read_tsc_64(&(get_cpulocal_var(proc_ptr)->p_accounting.enter_queue));
-
 
 #if DEBUG_SANITYCHECKS
 	assert(runqueues_ok_local());
 #endif
 }
-
 /*===========================================================================*
  *				enqueue_head				     *
  *===========================================================================*/
