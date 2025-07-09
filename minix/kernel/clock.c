@@ -113,6 +113,12 @@ int timer_int_handler(void)
 	p = get_cpulocal_var(proc_ptr);
 	billp = get_cpulocal_var(bill_ptr);
 
+	/* ---- INÍCIO DA MODIFICAÇÃO PARA O SRTF ---- */
+	if (p && p->p_nr >= 0 && p->p_tempo_restante > 0) {
+		p->p_tempo_restante--;
+	}
+	/* ---- FIM DA MODIFICAÇÃO PARA O SRTF ---- */
+
 	p->p_user_time++;
 
 	if (! (priv(p)->s_flags & BILLABLE)) {
