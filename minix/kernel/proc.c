@@ -34,7 +34,6 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h> 
-#include <minix/clock.h> 
 
 #include "vm.h"
 #include "clock.h"
