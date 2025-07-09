@@ -37,6 +37,7 @@
 
 #include "vm.h"
 #include "clock.h"
+#include "proto.h"
 #include "spinlock.h"
 #include "arch_proto.h"
 
@@ -1805,7 +1806,10 @@ static struct proc * pick_proc(void)
 
     if (total > 0) {
         /* 2) Sorteia um número entre 1 e total */
-        winner = (get_cpu_time_64() % total) + 1;
+        uint64_t ticks[MINIX_CPUSTATES];
+	get_cpu_ticks(cpuid, ticks);
+	winner = (ticks[0] % total) + 1;
+
 
         /* 3) Achar o processo vencedor */
         for (rp = BEG_PROC_ADDR; rp <= END_PROC_ADDR; rp++) {
