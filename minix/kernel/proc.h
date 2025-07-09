@@ -20,6 +20,8 @@
 #include "priv.h"
 
 struct proc {
+  unsigned int p_tempo_total; // Guarda o "burst" total de um processo
+  unsigned int p_tempo_restante; // Guarda o tempo que ainda falta para o burst acabar
   struct stackframe_s p_reg;	/* process' registers saved in stack frame */
   struct segframe p_seg;	/* segment descriptors */
   proc_nr_t p_nr;		/* number of this process (for fast access) */
