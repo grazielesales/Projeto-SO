@@ -1797,7 +1797,7 @@ static struct proc * pick_proc(void)
     rdy_head = get_cpulocal_var(run_q_head);
 
     /* 1) Somar tickets de todos os processos prontos */
-    for (rp = FIRST_PROC_ADDR; rp <= LAST_PROC_ADDR; rp++) {
+    for (rp = BEG_PROC_ADDR; rp <= END_PROC_ADDR; rp++) {
         if (proc_is_runnable(rp)) {
             total += rp->tickets;
         }
@@ -1808,7 +1808,7 @@ static struct proc * pick_proc(void)
         winner = (rand() % total) + 1;
 
         /* 3) Achar o processo vencedor */
-        for (rp = FIRST_PROC_ADDR; rp <= LAST_PROC_ADDR; rp++) {
+        for (rp = BEG_PROC_ADDR; rp <= END_PROC_ADDR; rp++) {
             if (proc_is_runnable(rp)) {
                 acc += rp->tickets;
                 if (acc >= winner) {
