@@ -1782,23 +1782,27 @@ void dequeue(struct proc *rp)
  *===========================================================================*/
 static struct proc * pick_proc(void) {
     struct proc *p;
-    struct proc *shortest_proc = NULL; // Guarda o processo mais curto encontrado
+    struct proc *shortest_proc = NULL;
+    int q;
+    struct proc **rdy_head;
 
-    // Itera por todas as filas e todos os processos prontos
-    for (int q = 0; q < NR_SCHED_QUEUES; q++) {
+    rdy_head = get_cpulocal_var(run_q_head);
+
+    // Itera por todas as filas de prioridade
+    for (q = 0; q < NR_SCHED_QUEUES; q++) {
+        // Itera por todos os processos na fila atual
         for (p = rdy_head[q]; p != NULL; p = p->p_nextready) {
-            // Considera apenas processos de usuário
-            if (p->p_nr >= 0) {
-                // Se é o primeiro que encontramos ou se o tempo dele é menor
+            // Considera apenas processos de usuário que estão prontos para rodar
+            if (p->p_nr >= 0 && proc_is_runnable(p)) {
+                // Se é o primeiro processo pronto que encontramos, ou 
+                // se o tempo dele é menor que o do mais curto já encontrado...
                 if (shortest_proc == NULL || p->p_tempo_restante < shortest_proc->p_tempo_restante) {
-                    shortest_proc = p;
+                    shortest_proc = p; // ... ele se torna o novo candidato
                 }
             }
         }
     }
-    // Se não achou nenhum processo de usuário, retorna NULL
-    // Se achou, retorna o processo com o menor tempo restante
-    return shortest_proc;
+    return shortest_proc; // Retorna o processo mais curto encontrado ou NULL
 }
 
 /*===========================================================================*
