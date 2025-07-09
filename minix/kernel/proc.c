@@ -1592,67 +1592,40 @@ asyn_error:
 /*===========================================================================*
  *				enqueue					     * 
  *===========================================================================*/
-void enqueue(struct proc *rp)
-{
-/* Adiciona 'rp' a uma das filas de processos prontos. */
-
-    int q; /* Fila de escalonamento a ser usada */
+void enqueue(struct proc *rp) {
+    int q;
     struct proc **rdy_head, **rdy_tail;
-    struct proc *p_atual; /* Ponteiro para o processo atualmente na CPU */
-    
-    /* Garante que o processo que está sendo enfileirado está de fato pronto para rodar */
-    assert(proc_is_runnable(rp)); 
-    assert(rp->p_nr >= 0); /* Garante que estamos lidando com um processo de usuário */
+    struct proc *p_atual;
 
-    /* --- INÍCIO DA LÓGICA SRTF: INICIALIZAÇÃO DO TEMPO --- */
-    // Se o tempo restante do processo zerou (ele completou um burst de CPU)
-    // ou se é a primeira vez, inicializamos seu tempo.
-    if (rp->p_tempo_restante == 0) {
-        // Este valor (100) é um exemplo. Vocês podem usar um valor padrão 
-        // ou um mais complexo, se desejarem.
-        rp->p_tempo_total = 100;
+    assert(proc_is_runnable(rp));
+
+    // Se for um processo de usuário e seu tempo restante acabou, reinicia para um novo burst.
+    if (rp->p_nr >= 0 && rp->p_tempo_restante == 0) {
+        rp->p_tempo_total = 100; // Valor de exemplo para o burst
         rp->p_tempo_restante = rp->p_tempo_total;
     }
-    /* --- FIM DA LÓGICA SRTF: INICIALIZAÇÃO DO TEMPO --- */
 
-
-    /* --- LÓGICA ORIGINAL DE ENFILEIRAMENTO --- */
-    // Pega a prioridade do processo para saber em qual fila física colocá-lo.
-    // Embora nosso pick_proc ignore isso, manter a estrutura ajuda na organização.
+    // Lógica original para colocar o processo na fila correta
     q = rp->p_priority;
-    assert(q >= 0);
-    
     rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
     rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
-    
-    // Adiciona o processo no final da fila de prioridade correspondente.
-    if (!rdy_head[q]) { /* A fila está vazia */
+
+    if (!rdy_head[q]) {
         rdy_head[q] = rdy_tail[q] = rp;
         rp->p_nextready = NULL;
-    } else { /* Adiciona no final da fila */
+    } else {
         rdy_tail[q]->p_nextready = rp;
         rdy_tail[q] = rp;
         rp->p_nextready = NULL;
     }
-    /* --- FIM DA LÓGICA ORIGINAL DE ENFILEIRAMENTO --- */
-    
-    
-    /* --- INÍCIO DA LÓGICA SRTF: PREEMPÇÃO --- */
-    // Agora, verificamos se o processo que acabamos de adicionar deve tomar o 
-    // lugar do que está rodando.
-    p_atual = get_cpulocal_var(proc_ptr); // Pega o processo que está na CPU
 
-    // Compara o tempo restante do novo processo com o do processo atual.
-    // A preempção só ocorre se o processo atual também for um processo de usuário.
-    if (proc_is_runnable(p_atual) && p_atual->p_nr >= 0 &&
-        rp->p_tempo_restante < p_atual->p_tempo_restante) {
-        
-        // O novo processo é mais curto! Forçamos uma re-escalonamento (preempção).
+    // Lógica de Preempção do SRTF (CORRIGIDA)
+    p_atual = get_cpulocal_var(proc_ptr);
+    if (p_atual->p_nr >= 0 && proc_is_runnable(p_atual) &&
+        rp->p_tempo_restante < p_atual->p_tempo_restante) { // Compara o novo com o atual
         RTS_SET(p_atual, RTS_PREEMPTED);
     }
-    /* --- FIM DA LÓGICA SRTF: PREEMPÇÃO --- */
 
-    /* O resto da função original pode ser mantido para accounting e SMP */
     read_tsc_64(&(rp->p_accounting.enter_queue));
 }
 
