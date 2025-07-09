@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h> 
+#include <minix/clock.h> 
 
 #include "vm.h"
 #include "clock.h"
@@ -1805,7 +1806,7 @@ static struct proc * pick_proc(void)
 
     if (total > 0) {
         /* 2) Sorteia um número entre 1 e total */
-        winner = (rand() % total) + 1;
+        winner = (get_cpu_time_64() % total) + 1;
 
         /* 3) Achar o processo vencedor */
         for (rp = BEG_PROC_ADDR; rp <= END_PROC_ADDR; rp++) {
