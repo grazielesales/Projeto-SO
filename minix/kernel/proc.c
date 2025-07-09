@@ -1592,7 +1592,8 @@ asyn_error:
 /*===========================================================================*
  *				enqueue					     * 
  *===========================================================================*/
-void enqueue(struct proc *rp) {
+void enqueue(struct proc *rp)
+{
     int q;
     struct proc **rdy_head, **rdy_tail;
     struct proc *p_atual;
@@ -1601,11 +1602,13 @@ void enqueue(struct proc *rp) {
 
     // Se for um processo de usuário e seu tempo restante acabou, reinicia para um novo burst.
     if (rp->p_nr >= 0 && rp->p_tempo_restante == 0) {
-        rp->p_tempo_total = 100; // Valor de exemplo para o burst
+        // ---- SUGESTÃO DE MELHORIA ----
+        // Atribui um tempo de burst variável (entre 50 e 149) usando o PID
+        // para que o SRTF tenha processos de tamanhos diferentes para escalonar.
+        rp->p_tempo_total = 50 + (rp->p_nr % 100); 
         rp->p_tempo_restante = rp->p_tempo_total;
     }
 
-    // Lógica original para colocar o processo na fila correta
     q = rp->p_priority;
     rdy_head = get_cpu_var(rp->p_cpu, run_q_head);
     rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
@@ -1619,10 +1622,10 @@ void enqueue(struct proc *rp) {
         rp->p_nextready = NULL;
     }
 
-    // Lógica de Preempção do SRTF (CORRIGIDA)
+    // Lógica de Preempção do SRTF
     p_atual = get_cpulocal_var(proc_ptr);
     if (p_atual->p_nr >= 0 && proc_is_runnable(p_atual) &&
-        rp->p_tempo_restante < p_atual->p_tempo_restante) { // Compara o novo com o atual
+        rp->p_tempo_restante < p_atual->p_tempo_restante) {
         RTS_SET(p_atual, RTS_PREEMPTED);
     }
 
