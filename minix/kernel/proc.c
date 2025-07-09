@@ -1684,72 +1684,41 @@ static void enqueue_head(struct proc *rp)
 /*===========================================================================*
  *				dequeue					     * 
  *===========================================================================*/
-void dequeue(struct proc *rp)
-/* this process is no longer runnable */
-{
-/* A process must be removed from the scheduling queues, for example, because
- * it has blocked.  If the currently active process is removed, a new process
- * is picked to run by calling pick_proc().
- *
- * This function can operate x-cpu as it always removes the process from the
- * queue of the cpu the process is currently assigned to.
- */
-  int q = rp->p_priority;		/* queue to use */
-  struct proc **xpp;			/* iterate over queue */
-  struct proc *prev_xp;
-  u64_t tsc, tsc_delta;
+void dequeue(struct proc *rp) {
+    int q = rp->p_priority;
+    struct proc **xpp;
+    struct proc *prev_xp;
+    u64_t tsc, tsc_delta;
+    struct proc **rdy_tail;
 
-  struct proc **rdy_tail;
+    assert(proc_ptr_ok(rp));
+    assert(!proc_is_runnable(rp));
+    assert (!iskernelp(rp) || *priv(rp)->s_stack_guard == STACK_GUARD);
 
-  assert(proc_ptr_ok(rp));
-  assert(!proc_is_runnable(rp));
+    rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
+    prev_xp = NULL;
+    for (xpp = get_cpu_var_ptr(rp->p_cpu, run_q_head[q]); *xpp; xpp = &(*xpp)->p_nextready) {
+        if (*xpp == rp) {
+            *xpp = (*xpp)->p_nextready;
+            if (rp == rdy_tail[q]) {
+                rdy_tail[q] = prev_xp;
+            }
+            break;
+        }
+        prev_xp = *xpp;
+    }
 
-  /* Side-effect for kernel: check if the task's stack still is ok? */
-  assert (!iskernelp(rp) || *priv(rp)->s_stack_guard == STACK_GUARD);
+    rp->p_accounting.dequeues++;
 
-  rdy_tail = get_cpu_var(rp->p_cpu, run_q_tail);
+    if (rp->p_accounting.enter_queue) {
+        read_tsc_64(&tsc);
+        tsc_delta = tsc - rp->p_accounting.enter_queue;
+        rp->p_accounting.time_in_queue = rp->p_accounting.time_in_queue + tsc_delta;
+        rp->p_accounting.enter_queue = 0;
+    }
 
-  /* Now make sure that the process is not in its ready queue. Remove the 
-   * process if it is found. A process can be made unready even if it is not 
-   * running by being sent a signal that kills it.
-   */
-  prev_xp = NULL;				
-  for (xpp = get_cpu_var_ptr(rp->p_cpu, run_q_head[q]); *xpp;
-		  xpp = &(*xpp)->p_nextready) {
-      if (*xpp == rp) {				/* found process to remove */
-          *xpp = (*xpp)->p_nextready;		/* replace with next chain */
-          if (rp == rdy_tail[q]) {		/* queue tail removed */
-              rdy_tail[q] = prev_xp;		/* set new tail */
-	  }
-
-          break;
-      }
-      prev_xp = *xpp;				/* save previous in chain */
-  }
-
-	
-  /* Process accounting for scheduling */
-  rp->p_accounting.dequeues++;
-
-  /* this is not all that accurate on virtual machines, especially with
-     IO bound processes that only spend a short amount of time in the queue
-     at a time. */
-  if (rp->p_accounting.enter_queue) {
-	read_tsc_64(&tsc);
-	tsc_delta = tsc - rp->p_accounting.enter_queue;
-	rp->p_accounting.time_in_queue = rp->p_accounting.time_in_queue +
-		tsc_delta;
-	rp->p_accounting.enter_queue = 0;
-  }
-
-  /* For ps(1), remember when the process was last dequeued. */
-  rp->p_dequeued = get_monotonic();
-
-#if DEBUG_SANITYCHECKS
-  assert(runqueues_ok_local());
-#endif
+    rp->p_dequeued = get_monotonic();
 }
-
 /*===========================================================================*
  *				pick_proc				     * 
  *===========================================================================*/
